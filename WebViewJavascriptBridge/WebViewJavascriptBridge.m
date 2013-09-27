@@ -256,14 +256,6 @@ static bool logging = false;
     }
 }
 
-- (void)webView:(WebView *)webView didFailLoadWithError:(NSError *)error forFrame:(WebFrame *)frame {
-    if (webView != _webView) { return; }
-    
-    if (_webViewDelegate && [_webViewDelegate respondsToSelector:@selector(webView:didFailLoadWithError:forFrame:)]) {
-        [_webViewDelegate webView:webView didFailLoadWithError:error forFrame:frame];
-    }
-}
-
 - (void)webView:(WebView *)webView decidePolicyForNavigationAction:(NSDictionary *)actionInformation request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id<WebPolicyDecisionListener>)listener
 {
     if (webView != _webView) { return; }
@@ -282,25 +274,6 @@ static bool logging = false;
         [listener use];
     }
 }
-
-- (void)webView:(WebView *)webView didCommitLoadForFrame:(WebFrame *)frame {
-    if (webView != _webView) { return; }
-    
-    if (_webViewDelegate && [_webViewDelegate respondsToSelector:@selector(webView:didCommitLoadForFrame:)]) {
-        [_webViewDelegate webView:webView didCommitLoadForFrame:frame];
-    }
-}
-
-- (NSURLRequest *)webView:(WebView *)webView resource:(id)identifier willSendRequest:(NSURLRequest *)request redirectResponse:(NSURLResponse *)redirectResponse fromDataSource:(WebDataSource *)dataSource {
-    if (webView != _webView) { return request; }
-    
-    if (_webViewDelegate && [_webViewDelegate respondsToSelector:@selector(webView:resource:willSendRequest:redirectResponse:fromDataSource:)]) {
-        return [_webViewDelegate webView:webView resource:identifier willSendRequest:request redirectResponse:redirectResponse fromDataSource:dataSource];
-    }
-    
-    return request;
-}
-
 
 
 /* Platform specific internals: OSX
@@ -384,5 +357,50 @@ static bool logging = false;
 }
 
 #endif
+
+// John Turnipseed <johnt@me.com> - 09/27/2013
+//
+// These methods were added in order to relay delegate methods to the WebViewDelegate that WebViewJavascriptBridge doesn't
+// actually implement. In order to do this, it either has to implement every possible delegate method and forward them the
+// actual delegate if it responds to them. This approach would be tedious and liable to break whenever new delegate methods
+// are added.
+//
+// The alternative is the approach below which overrides "respondsToSelector:" and lies to the runtime by telling it we support
+// anything that our delegate supports. When the runtime tries to call the selector and finds it doesn't really exists, it then
+// calls methodSignatureForSelector: and forwardInvocation: where we then relay the calls to our delegate
+
+- (BOOL)respondsToSelector:(SEL)aSelector
+{
+    // It may not be obvious, but calling [super respondsToSelector:xxx] actually invokes NSObject's implementation
+    // of the respondsToSelector: method, which still checks our subclass... not just our NSObject superclass.
+    if ([super respondsToSelector:aSelector] || [_webViewDelegate respondsToSelector:aSelector])
+        return YES;
+    
+//  Uncommenting the line below may yeild tales of some interesting WebView delegate methods... "here be dragons"
+//  NSLog(@"WebViewJavascriptBridge:respondsToSelector: called for unsupported selector: '%@'", NSStringFromSelector(aSelector));
+    return NO;
+}
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    if ([_webViewDelegate respondsToSelector:aSelector])
+        return [_webViewDelegate methodSignatureForSelector:aSelector];
+    
+    // This shouldn't happen, but if it ever does, we need to return a dummy NSMethodSignage. Returning nil would raise
+    // an exception. The dummy invocation will do nothing if invoked.
+    NSLog(@"WebViewJavascriptBridge:methodSignatureForSelector: called for unhandled selector: '%@'", NSStringFromSelector(aSelector));
+    return [NSMethodSignature signatureWithObjCTypes:"@^v^c"];;
+}
+
+- (void)forwardInvocation:(NSInvocation *)invocation;
+{
+    if ([_webViewDelegate respondsToSelector:[invocation selector]])
+    {
+        [invocation invokeWithTarget:_webViewDelegate];
+        return;
+    }
+    
+    [invocation invokeWithTarget:nil];
+}
 
 @end

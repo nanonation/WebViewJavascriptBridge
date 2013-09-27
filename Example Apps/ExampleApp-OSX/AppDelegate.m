@@ -24,7 +24,7 @@
 }
 
 - (void)_createBridge {
-    _bridge = [WebViewJavascriptBridge bridgeForWebView:_webView handler:^(id data, WVJBResponseCallback responseCallback) {
+    _bridge = [WebViewJavascriptBridge bridgeForWebView:_webView webViewDelegate:self handler:^(id data, WVJBResponseCallback responseCallback) {
         NSLog(@"ObjC received message from JS: %@", data);
         responseCallback(@"Response for message from ObjC");
     }];
@@ -83,5 +83,29 @@
     [[_webView mainFrame] loadHTMLString:html baseURL:nil];
 }
 
+
+// WebFrameLoadDelegate method
+- (void)webView:(WebView *)sender didReceiveTitle:(NSString *)title forFrame:(WebFrame *)frame {
+    NSLog(@"AppDelegate:didReceiveTitle: %@", title);
+}
+
+// WebPolicyDelegate method
+- (void)webView:(WebView *)webView decidePolicyForMIMEType:(NSString *)type request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id<WebPolicyDecisionListener>)listener {
+    NSLog(@"AppDelegate:decidePolicyForMIMEType: '%@'", type);
+    [listener use];
+}
+
+// WebResourceLoadDelegate method
+- (id)webView:(WebView *)sender identifierForInitialRequest:(NSURLRequest *)request fromDataSource:(WebDataSource *)dataSource {
+    static long requestID = 0;
+    NSString*   identifier = [NSString stringWithFormat:@"%ld", ++requestID];
+    NSLog(@"AppDelegate:webView:identifierForInitialRequest: returning '%@'", identifier);
+    return identifier;
+}
+
+// WebResourceLoadDelegate method
+- (void)webView:(WebView *)sender resource:(id)identifier didFinishLoadingFromDataSource:(WebDataSource *)dataSource {
+    NSLog(@"AppDelegate:webView:didFinishLoadingFromDataSource: identifier = '%@'", identifier);
+}
 
 @end
