@@ -23,6 +23,8 @@
     NSMutableDictionary* _messageHandlers;
     long _uniqueId;
     WVJBHandler _messageHandler;
+    BOOL _shouldLogConsoleMessagesToNSLog;
+    WVJBJSConsoleMessageHandler _consoleLogHandler;
     
 #if defined WVJB_PLATFORM_IOS
     NSUInteger _numRequestsLoading;
@@ -71,6 +73,14 @@ static bool logging = false;
     _messageHandlers[handlerName] = [handler copy];
 }
 
+- (void)setJSConsoleMessageHandler:(WVJBJSConsoleMessageHandler)handler {
+    _consoleLogHandler = handler;
+}
+
+- (void)setShouldLogJSConsoleMessagesToNSLog:(BOOL)shouldLog {
+    _shouldLogConsoleMessagesToNSLog = shouldLog;
+}
+
 - (void)reset {
     _startupMessageQueue = [NSMutableArray array];
     _responseCallbacks = [NSMutableDictionary dictionary];
@@ -89,6 +99,7 @@ static bool logging = false;
     _responseCallbacks = nil;
     _messageHandlers = nil;
     _messageHandler = nil;
+    _consoleLogHandler = nil;
 }
 
 - (void)_sendData:(NSDictionary *)data responseCallback:(WVJBResponseCallback)responseCallback handlerName:(NSString*)handlerName {
@@ -186,6 +197,20 @@ static bool logging = false;
     }
 }
 
+- (void)_flushConsoleMessageQueue
+{
+    NSString *messageQueueString = [_webView stringByEvaluatingJavaScriptFromString:@"WebViewJavascriptBridge._fetchConsoleQueue();"];
+    
+    NSArray* messages = [messageQueueString componentsSeparatedByString:kMessageSeparator];
+    for (NSString* messageJSON in messages) {
+        NSDictionary* messageDict = [self _deserializeMessageJSON:messageJSON];
+        if (_shouldLogConsoleMessagesToNSLog)
+            NSLog(@"WVJB:JSConsoleLog: %@: %@",messageDict[@"type"],messageDict[@"message"]);
+        if (_consoleLogHandler)
+            _consoleLogHandler(messageDict[@"type"],messageDict[@"message"]);
+    }
+}
+
 - (NSString *)_serializeMessage:(NSDictionary *)message {
 #if defined _JSONKIT_H_
     return [message JSONString];
@@ -264,8 +289,10 @@ static bool logging = false;
     if ([[url scheme] isEqualToString:kCustomProtocolScheme]) {
         if ([[url host] isEqualToString:kQueueHasMessage]) {
             [self _flushMessageQueue];
+        } else if ([[url host] isEqualToString:kConsoleQueueHasMessage]) {
+            [self _flushConsoleMessageQueue];
         } else {
-            NSLog(@"WebViewJavascriptBridge: WARNING: Received unknown WebViewJavascriptBridge command %@://%@", kCustomProtocolScheme, [url path]);
+            NSLog(@"WebViewJavascriptBridge: WARNING: Received unknown WebViewJavascriptBridge command %@", [url absoluteString]);
         }
         [listener ignore];
     } else if (_webViewDelegate && [_webViewDelegate respondsToSelector:@selector(webView:decidePolicyForNavigationAction:request:frame:decisionListener:)]) {
@@ -334,8 +361,10 @@ static bool logging = false;
     if ([[url scheme] isEqualToString:kCustomProtocolScheme]) {
         if ([[url host] isEqualToString:kQueueHasMessage]) {
             [self _flushMessageQueue];
+        } else if ([[url host] isEqualToString:kConsoleQueueHasMessage]) {
+            [self _flushConsoleMessageQueue];
         } else {
-            NSLog(@"WebViewJavascriptBridge: WARNING: Received unknown WebViewJavascriptBridge command %@://%@", kCustomProtocolScheme, [url path]);
+            NSLog(@"WebViewJavascriptBridge: WARNING: Received unknown WebViewJavascriptBridge command %@", [url absoluteString]);
         }
         return NO;
     } else if (strongDelegate && [strongDelegate respondsToSelector:@selector(webView:shouldStartLoadWithRequest:navigationType:)]) {

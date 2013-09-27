@@ -4,11 +4,14 @@
 	var sendMessageQueue = []
 	var receiveMessageQueue = []
 	var messageHandlers = {}
-	
+	var logMessageQueue = []
+    var console = window.console
+
 	var MESSAGE_SEPARATOR = '__WVJB_MESSAGE_SEPERATOR__'
 	var CUSTOM_PROTOCOL_SCHEME = 'wvjbscheme'
 	var QUEUE_HAS_MESSAGE = '__WVJB_QUEUE_MESSAGE__'
-	
+	var CONSOLE_QUEUE_HAS_MESSAGE = '__WVJB_CONSOLE_QUEUE_MESSAGE__'
+
 	var responseCallbacks = {}
 	var uniqueId = 1
 	
@@ -98,6 +101,52 @@
 			_dispatchMessageFromObjC(messageJSON)
 		}
 	}
+    
+    function _appendLogMessage(data) {
+        logMessageQueue.push(JSON.stringify(data))
+        messagingIframe.src = CUSTOM_PROTOCOL_SCHEME + '://' + CONSOLE_QUEUE_HAS_MESSAGE
+    }
+    
+    function log(msg) {
+        var fullMsg = Array.prototype.slice.apply(arguments).join(' ')
+        _appendLogMessage({type:'log',message:fullMsg})
+    }
+    
+    function warn(msg) {
+        var fullMsg = Array.prototype.slice.apply(arguments).join(' ')
+        _appendLogMessage({type:'warn',message:fullMsg})
+    }
+    
+    function error(msg) {
+        var fullMsg = Array.prototype.slice.apply(arguments).join(' ')
+        _appendLogMessage({type:'error',message:fullMsg})
+    }
+
+	function _fetchConsoleQueue() {
+		var messageQueueString = logMessageQueue.join(MESSAGE_SEPARATOR)
+		logMessageQueue = []
+		return messageQueueString
+	}
+
+    if (console) {
+        function intercept(method){
+            var original = console[method]
+            console[method] = function(){
+                var message = Array.prototype.slice.apply(arguments).join(' ')
+                if (original.apply){
+                    // Do this for normal browsers
+                    original.apply(console, arguments)
+                }else{
+                    // Do this for IE
+                    original(message)
+                }
+                window.WebViewJavascriptBridge[method](message)
+            }
+        }
+        var methods = ['log', 'warn', 'error']
+        for (var i = 0; i < methods.length; i++)
+            intercept(methods[i])
+    }
 
 	window.WebViewJavascriptBridge = {
 		init: init,
@@ -105,7 +154,11 @@
 		registerHandler: registerHandler,
 		callHandler: callHandler,
 		_fetchQueue: _fetchQueue,
-		_handleMessageFromObjC: _handleMessageFromObjC
+		_handleMessageFromObjC: _handleMessageFromObjC,
+		log: log,
+		warn: warn,
+		error: error,
+		_fetchConsoleQueue: _fetchConsoleQueue,
 	}
 
 	var doc = document

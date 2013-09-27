@@ -29,6 +29,12 @@
         responseCallback(@"Response for message from ObjC");
     }];
     
+    [_bridge setShouldLogJSConsoleMessagesToNSLog:NO];
+    
+    [_bridge setJSConsoleMessageHandler:^(NSString* type, NSString* message){
+        NSLog(@"AppDelegate:JSConsoleLog: '%@' - %@", type, message);
+    }];
+    
     [_bridge registerHandler:@"testObjcCallback" handler:^(id data, WVJBResponseCallback responseCallback) {
         NSLog(@"testObjcCallback called: %@", data);
         responseCallback(@"Response from testObjcCallback");
