@@ -165,6 +165,7 @@ static bool logging = false;
             NSString* callbackId = message[@"callbackId"];
             if (callbackId) {
                 responseCallback = ^(id responseData) {
+                    if (!responseData || [responseData isKindOfClass:[NSNull class]]) { responseData = @{};}
                     NSDictionary* msg = @{ @"responseId":callbackId, @"responseData":responseData };
                     [self _queueMessage:msg];
                 };
@@ -187,7 +188,7 @@ static bool logging = false;
             
             @try {
                 NSDictionary* data = message[@"data"];
-                if (!data || ((id)data) == [NSNull null]) { data = [NSDictionary dictionary]; }
+                if (!data || [data isKindOfClass:[NSNull class]]) { data = [NSDictionary dictionary]; }
                 handler(data, responseCallback);
             }
             @catch (NSException *exception) {
