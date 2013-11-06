@@ -338,7 +338,7 @@ static bool logging = false;
         _startupMessageQueue = nil;
     }
     
-    __strong typeof(_webViewDelegate) strongDelegate = _webViewDelegate;
+    __strong id strongDelegate = _webViewDelegate;
     if (strongDelegate && [strongDelegate respondsToSelector:@selector(webViewDidFinishLoad:)]) {
         [strongDelegate webViewDidFinishLoad:webView];
     }
@@ -349,7 +349,7 @@ static bool logging = false;
     
     _numRequestsLoading--;
     
-    __strong typeof(_webViewDelegate) strongDelegate = _webViewDelegate;
+    __strong id strongDelegate = _webViewDelegate;
     if (strongDelegate && [strongDelegate respondsToSelector:@selector(webView:didFailLoadWithError:)]) {
         [strongDelegate webView:webView didFailLoadWithError:error];
     }
@@ -358,7 +358,7 @@ static bool logging = false;
 - (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType {
     if (webView != _webView) { return YES; }
     NSURL *url = [request URL];
-    __strong typeof(_webViewDelegate) strongDelegate = _webViewDelegate;
+    __strong id strongDelegate = _webViewDelegate;
     if ([[url scheme] isEqualToString:kCustomProtocolScheme]) {
         if ([[url host] isEqualToString:kQueueHasMessage]) {
             [self _flushMessageQueue];
@@ -380,7 +380,7 @@ static bool logging = false;
     
     _numRequestsLoading++;
     
-    __strong typeof(_webViewDelegate) strongDelegate = _webViewDelegate;
+    __strong id strongDelegate = _webViewDelegate;
     if (strongDelegate && [strongDelegate respondsToSelector:@selector(webViewDidStartLoad:)]) {
         [strongDelegate webViewDidStartLoad:webView];
     }
