@@ -1,6 +1,7 @@
 ;(function() {
 	if (window.WebViewJavascriptBridge) { return }
 	var messagingIframe
+	var consoleMessagingIframe
 	var sendMessageQueue = []
 	var receiveMessageQueue = []
 	var messageHandlers = {}
@@ -19,6 +20,12 @@
 		messagingIframe = doc.createElement('iframe')
 		messagingIframe.style.display = 'none'
 		doc.documentElement.appendChild(messagingIframe)
+	}
+
+	function _createConsoleQueueReadyIframe(doc) {
+		consoleMessagingIframe = doc.createElement('consoleIframe')
+		consoleMessagingIframe.style.display = 'none'
+		doc.documentElement.appendChild(consoleMessagingIframe)
 	}
 
 	function init(messageHandler) {
@@ -104,7 +111,7 @@
     
     function _appendLogMessage(data) {
         logMessageQueue.push(JSON.stringify(data))
-        messagingIframe.src = CUSTOM_PROTOCOL_SCHEME + '://' + CONSOLE_QUEUE_HAS_MESSAGE
+        consoleMessagingIframe.src = CUSTOM_PROTOCOL_SCHEME + '://' + CONSOLE_QUEUE_HAS_MESSAGE
     }
     
     function log(msg) {
@@ -163,6 +170,7 @@
 
 	var doc = document
 	_createQueueReadyIframe(doc)
+    _createConsoleQueueReadyIframe(doc)
 	var readyEvent = doc.createEvent('Events')
 	readyEvent.initEvent('WebViewJavascriptBridgeReady')
 	readyEvent.bridge = WebViewJavascriptBridge
