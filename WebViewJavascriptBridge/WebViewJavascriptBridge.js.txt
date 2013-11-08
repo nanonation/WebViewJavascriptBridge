@@ -23,7 +23,7 @@
 	}
 
 	function _createConsoleQueueReadyIframe(doc) {
-		consoleMessagingIframe = doc.createElement('consoleIframe')
+		consoleMessagingIframe = doc.createElement('iframe')
 		consoleMessagingIframe.style.display = 'none'
 		doc.documentElement.appendChild(consoleMessagingIframe)
 	}
