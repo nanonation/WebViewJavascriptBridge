@@ -237,9 +237,10 @@ static bool logging = false;
     return [message JSONString];
 #else
     return [[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:message options:0 error:nil] encoding:NSUTF8StringEncoding];
+#endif
 }
 
-- (NSArray*)_deserializeMessageJSON:(NSString *)messageJSON {
+- (NSDictionary*)_deserializeMessageJSON:(NSString *)messageJSON {
     return [NSJSONSerialization JSONObjectWithData:[messageJSON dataUsingEncoding:NSUTF8StringEncoding] options:NSJSONReadingAllowFragments error:nil];
 }
 
