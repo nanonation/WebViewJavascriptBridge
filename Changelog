@@ -1,3 +1,37 @@
+WebViewJavascriptBridge Changelog
+=================================
+
+Release Checklist
+-----------------
+- gitu-update
+- Note Changelog
+- Bump `WebViewJavascriptBridge.podspec` version "X.Y.Z"
+- gitm-commit "vX.Y.Z"
+- gitt-tag "vX.Y.Z"
+- pod trunk push
+
+Version History
+---------------
+
+v4.1.3
++ Update podspec file with tag
+
+v4.1.2
++ Fix bug: webViewDidStart/FinishLoad were called twice and isLoading was always true (#86)
+
+v4.1.1
++ Better JS initialization script (thank @refractalize!)
++ When passing nil to an objc response callback, replace it with [NSNull null] (becomes null in js)
+
+v4.1.0
++ Allow for sending null/nil data packets
++ Drop support for JSONKit
++ Clean up internal represenation of messages
+
+v4.0.2
++ Fix NSInvalidArgumentException: "attempt to insert nil object" when using shorthand -callHandler:
++ Fix sending messages including __WVJB_MESSAGE_SEPERATOR__ string
+
 v4.0.1
 + Fix detection of arc_weak support
 

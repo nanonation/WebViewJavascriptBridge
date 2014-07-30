@@ -19,6 +19,7 @@
 	function _createQueueReadyIframe(doc) {
 		messagingIframe = doc.createElement('iframe')
 		messagingIframe.style.display = 'none'
+		messagingIframe.src = CUSTOM_PROTOCOL_SCHEME + '://' + QUEUE_HAS_MESSAGE
 		doc.documentElement.appendChild(messagingIframe)
 	}
 
@@ -56,12 +57,12 @@
 			responseCallbacks[callbackId] = responseCallback
 			message['callbackId'] = callbackId
 		}
-		sendMessageQueue.push(JSON.stringify(message))
+		sendMessageQueue.push(message)
 		messagingIframe.src = CUSTOM_PROTOCOL_SCHEME + '://' + QUEUE_HAS_MESSAGE
 	}
 
 	function _fetchQueue() {
-		var messageQueueString = sendMessageQueue.join(MESSAGE_SEPARATOR)
+		var messageQueueString = JSON.stringify(sendMessageQueue)
 		sendMessageQueue = []
 		return messageQueueString
 	}

@@ -14,6 +14,7 @@
     #define WVJB_WEAK __unsafe_unretained
 #endif
 
+typedef NSDictionary WVJBMessage;
 
 @implementation WebViewJavascriptBridge {
     WVJB_WEAK WVJB_WEBVIEW_TYPE* _webView;
@@ -25,6 +26,8 @@
     WVJBHandler _messageHandler;
     BOOL _shouldLogConsoleMessagesToNSLog;
     WVJBJSConsoleMessageHandler _consoleLogHandler;
+    
+    NSBundle *_resourceBundle;
     
 #if defined WVJB_PLATFORM_IOS
     NSUInteger _numRequestsLoading;
@@ -43,17 +46,22 @@ static bool logging = false;
 }
 
 + (instancetype)bridgeForWebView:(WVJB_WEBVIEW_TYPE*)webView webViewDelegate:(WVJB_WEBVIEW_DELEGATE_TYPE*)webViewDelegate handler:(WVJBHandler)messageHandler {
+    return [self bridgeForWebView:webView webViewDelegate:webViewDelegate handler:messageHandler resourceBundle:nil];
+}
+
++ (instancetype)bridgeForWebView:(WVJB_WEBVIEW_TYPE*)webView webViewDelegate:(WVJB_WEBVIEW_DELEGATE_TYPE*)webViewDelegate handler:(WVJBHandler)messageHandler resourceBundle:(NSBundle*)bundle
+{
     WebViewJavascriptBridge* bridge = [[WebViewJavascriptBridge alloc] init];
-    [bridge _platformSpecificSetup:webView webViewDelegate:webViewDelegate handler:messageHandler];
+    [bridge _platformSpecificSetup:webView webViewDelegate:webViewDelegate handler:messageHandler resourceBundle:bundle];
     [bridge reset];
     return bridge;
 }
 
-- (void)send:(NSDictionary *)data {
+- (void)send:(id)data {
     [self send:data responseCallback:nil];
 }
 
-- (void)send:(NSDictionary *)data responseCallback:(WVJBResponseCallback)responseCallback {
+- (void)send:(id)data responseCallback:(WVJBResponseCallback)responseCallback {
     [self _sendData:data responseCallback:responseCallback handlerName:nil];
 }
 
@@ -102,8 +110,12 @@ static bool logging = false;
     _consoleLogHandler = nil;
 }
 
-- (void)_sendData:(NSDictionary *)data responseCallback:(WVJBResponseCallback)responseCallback handlerName:(NSString*)handlerName {
-    NSMutableDictionary* message = [NSMutableDictionary dictionaryWithObject:data forKey:@"data"];
+- (void)_sendData:(id)data responseCallback:(WVJBResponseCallback)responseCallback handlerName:(NSString*)handlerName {
+    NSMutableDictionary* message = [NSMutableDictionary dictionary];
+    
+    if (data) {
+        message[@"data"] = data;
+    }
     
     if (responseCallback) {
         NSString* callbackId = [NSString stringWithFormat:@"objc_cb_%ld", ++_uniqueId];
@@ -117,7 +129,7 @@ static bool logging = false;
     [self _queueMessage:message];
 }
 
-- (void)_queueMessage:(NSDictionary *)message {
+- (void)_queueMessage:(WVJBMessage*)message {
     if (_startupMessageQueue) {
         [_startupMessageQueue addObject:message];
     } else {
@@ -125,15 +137,17 @@ static bool logging = false;
     }
 }
 
-- (void)_dispatchMessage:(NSDictionary *)message {
+- (void)_dispatchMessage:(WVJBMessage*)message {
     NSString *messageJSON = [self _serializeMessage:message];
-    [self _log:@"sending" json:messageJSON];
+    [self _log:@"SEND" json:messageJSON];
     messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\\" withString:@"\\\\"];
     messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\"" withString:@"\\\""];
     messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\'" withString:@"\\\'"];
     messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\n" withString:@"\\n"];
     messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\r" withString:@"\\r"];
     messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\f" withString:@"\\f"];
+    messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\u2028" withString:@"\\u2028"];
+    messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\u2029" withString:@"\\u2029"];
 
     NSString* javascriptCommand = [NSString stringWithFormat:@"WebViewJavascriptBridge._handleMessageFromObjC('%@');", messageJSON];
     if ([[NSThread currentThread] isMainThread]) {
@@ -149,12 +163,18 @@ static bool logging = false;
 - (void)_flushMessageQueue {
     NSString *messageQueueString = [_webView stringByEvaluatingJavaScriptFromString:@"WebViewJavascriptBridge._fetchQueue();"];
     
-    NSArray* messages = [messageQueueString componentsSeparatedByString:kMessageSeparator];
-    for (NSString *messageJSON in messages) {
-        [self _log:@"receivd" json:messageJSON];
-        
-        NSDictionary* message = [self _deserializeMessageJSON:messageJSON];
-        
+    id messages = [self _deserializeMessageJSON:messageQueueString];
+    if (![messages isKindOfClass:[NSArray class]]) {
+        NSLog(@"WebViewJavascriptBridge: WARNING: Invalid %@ received: %@", [messages class], messages);
+        return;
+    }
+    for (WVJBMessage* message in messages) {
+        if (![message isKindOfClass:[WVJBMessage class]]) {
+            NSLog(@"WebViewJavascriptBridge: WARNING: Invalid %@ received: %@", [message class], message);
+            continue;
+        }
+        [self _log:@"RCVD" json:message];
+
         NSString* responseId = message[@"responseId"];
         if (responseId) {
             WVJBResponseCallback responseCallback = _responseCallbacks[responseId];
@@ -212,26 +232,24 @@ static bool logging = false;
     }
 }
 
-- (NSString *)_serializeMessage:(NSDictionary *)message {
+- (NSString *)_serializeMessage:(id)message {
 #if defined _JSONKIT_H_
     return [message JSONString];
 #else
     return [[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:message options:0 error:nil] encoding:NSUTF8StringEncoding];
-#endif
 }
 
-- (NSDictionary *)_deserializeMessageJSON:(NSString *)messageJSON {
-#if defined _JSONKIT_H_
-    return [messageJSON objectFromJSONString];
-#else
-    return [NSJSONSerialization JSONObjectWithData:[messageJSON dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
-#endif
+- (NSArray*)_deserializeMessageJSON:(NSString *)messageJSON {
+    return [NSJSONSerialization JSONObjectWithData:[messageJSON dataUsingEncoding:NSUTF8StringEncoding] options:NSJSONReadingAllowFragments error:nil];
 }
 
-- (void)_log:(NSString *)action json:(NSString *)json {
+- (void)_log:(NSString *)action json:(id)json {
     if (!logging) { return; }
-    if (json.length > 500) {
-        NSLog(@"WVJB %@: %@", action, [[json substringToIndex:500] stringByAppendingString:@" [...]"]);
+    if (![json isKindOfClass:[NSString class]]) {
+        json = [self _serializeMessage:json];
+    }
+    if ([json length] > 500) {
+        NSLog(@"WVJB %@: %@ [...]", action, [json substringToIndex:500]);
     } else {
         NSLog(@"WVJB %@: %@", action, json);
     }
@@ -243,7 +261,7 @@ static bool logging = false;
  **********************************/
 #if defined WVJB_PLATFORM_OSX
 
-- (void) _platformSpecificSetup:(WVJB_WEBVIEW_TYPE*)webView webViewDelegate:(WVJB_WEBVIEW_DELEGATE_TYPE*)webViewDelegate handler:(WVJBHandler)messageHandler {
+- (void) _platformSpecificSetup:(WVJB_WEBVIEW_TYPE*)webView webViewDelegate:(WVJB_WEBVIEW_DELEGATE_TYPE*)webViewDelegate handler:(WVJBHandler)messageHandler resourceBundle:(NSBundle*)bundle{
     _messageHandler = messageHandler;
     _webView = webView;
     _webViewDelegate = webViewDelegate;
@@ -252,6 +270,8 @@ static bool logging = false;
     _webView.frameLoadDelegate = self;
     _webView.resourceLoadDelegate = self;
     _webView.policyDelegate = self;
+    
+    _resourceBundle = bundle;
 }
 
 - (void) _platformSpecificDealloc {
@@ -304,16 +324,17 @@ static bool logging = false;
 }
 
 
-/* Platform specific internals: OSX
+/* Platform specific internals: iOS
  **********************************/
 #elif defined WVJB_PLATFORM_IOS
 
-- (void) _platformSpecificSetup:(WVJB_WEBVIEW_TYPE*)webView webViewDelegate:(id<UIWebViewDelegate>)webViewDelegate handler:(WVJBHandler)messageHandler {
+- (void) _platformSpecificSetup:(WVJB_WEBVIEW_TYPE*)webView webViewDelegate:(id<UIWebViewDelegate>)webViewDelegate handler:(WVJBHandler)messageHandler resourceBundle:(NSBundle*)bundle{
     _messageHandler = messageHandler;
     _webView = webView;
     _webViewDelegate = webViewDelegate;
     _messageHandlers = [NSMutableDictionary dictionary];
     _webView.delegate = self;
+    _resourceBundle = bundle;
 }
 
 - (void) _platformSpecificDealloc {

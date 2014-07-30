@@ -44,7 +44,7 @@
         NSLog(@"objc got response! %@", responseData);
     }];
     
-    [_bridge callHandler:@"testJavascriptHandler" data:[NSDictionary dictionaryWithObject:@"before ready" forKey:@"foo"]];
+    [_bridge callHandler:@"testJavascriptHandler" data:@{ @"foo":@"before ready" }];
 }
 
 - (void)_createObjcButtons {
@@ -70,7 +70,7 @@
 }
 
 - (void)_callHandler {
-    NSDictionary* data = [NSDictionary dictionaryWithObject:@"Hi there, JS!" forKey:@"greetingFromObjC"];
+    id data = @{ @"greetingFromObjC": @"Hi there, JS!" };
     [_bridge callHandler:@"testJavascriptHandler" data:data responseCallback:^(id response) {
         NSLog(@"testJavascriptHandler responded: %@", response);
     }];    

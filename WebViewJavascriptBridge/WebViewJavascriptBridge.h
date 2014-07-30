@@ -12,6 +12,7 @@
 #define kCustomProtocolScheme   @"wvjbscheme"
 #define kQueueHasMessage        @"__WVJB_QUEUE_MESSAGE__"
 #define kConsoleQueueHasMessage @"__WVJB_CONSOLE_QUEUE_MESSAGE__"
+#define kQueueHasMessage      @"__WVJB_QUEUE_MESSAGE__"
 
 #if defined __MAC_OS_X_VERSION_MAX_ALLOWED
     #import <WebKit/WebKit.h>
@@ -32,6 +33,7 @@ typedef void (^WVJBJSConsoleMessageHandler)(NSString* type, NSString* message);
 
 + (instancetype)bridgeForWebView:(WVJB_WEBVIEW_TYPE*)webView handler:(WVJBHandler)handler;
 + (instancetype)bridgeForWebView:(WVJB_WEBVIEW_TYPE*)webView webViewDelegate:(WVJB_WEBVIEW_DELEGATE_TYPE*)webViewDelegate handler:(WVJBHandler)handler;
++ (instancetype)bridgeForWebView:(WVJB_WEBVIEW_TYPE*)webView webViewDelegate:(WVJB_WEBVIEW_DELEGATE_TYPE*)webViewDelegate handler:(WVJBHandler)handler resourceBundle:(NSBundle*)bundle;
 + (void)enableLogging;
 
 - (void)setJSConsoleMessageHandler:(WVJBJSConsoleMessageHandler)handler;
