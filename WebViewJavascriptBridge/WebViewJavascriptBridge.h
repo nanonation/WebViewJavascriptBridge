@@ -20,6 +20,7 @@
     #define WVJB_WEBVIEW_TYPE WebView
     #define WVJB_WEBVIEW_DELEGATE_TYPE NSObject
 #elif defined __IPHONE_OS_VERSION_MAX_ALLOWED
+    #import <UIKit/UIWebView.h>
     #define WVJB_PLATFORM_IOS
     #define WVJB_WEBVIEW_TYPE UIWebView
     #define WVJB_WEBVIEW_DELEGATE_TYPE NSObject<UIWebViewDelegate>
@@ -45,6 +46,5 @@ typedef void (^WVJBJSConsoleMessageHandler)(NSString* type, NSString* message);
 - (void)callHandler:(NSString*)handlerName;
 - (void)callHandler:(NSString*)handlerName data:(id)data;
 - (void)callHandler:(NSString*)handlerName data:(id)data responseCallback:(WVJBResponseCallback)responseCallback;
-- (void)reset;
 
 @end

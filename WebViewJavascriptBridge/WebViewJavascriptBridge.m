@@ -53,7 +53,6 @@ static bool logging = false;
 {
     WebViewJavascriptBridge* bridge = [[WebViewJavascriptBridge alloc] init];
     [bridge _platformSpecificSetup:webView webViewDelegate:webViewDelegate handler:messageHandler resourceBundle:bundle];
-    [bridge reset];
     return bridge;
 }
 
@@ -97,6 +96,15 @@ static bool logging = false;
 
 /* Platform agnostic internals
  *****************************/
+
+- (id)init {
+    if (self = [super init]) {
+        _startupMessageQueue = [NSMutableArray array];
+        _responseCallbacks = [NSMutableDictionary dictionary];
+        _uniqueId = 0;
+    }
+    return self;
+}
 
 - (void)dealloc {
     [self _platformSpecificDealloc];
@@ -198,14 +206,13 @@ static bool logging = false;
             WVJBHandler handler;
             if (message[@"handlerName"]) {
                 handler = _messageHandlers[message[@"handlerName"]];
-                if (!handler) {
-                    NSLog(@"WVJB Warning: No handler for %@", message[@"handlerName"]);
-                    return responseCallback(@{});
-                }
             } else {
                 handler = _messageHandler;
             }
-            
+
+            if (!handler) {
+                [NSException raise:@"WVJBNoHandlerException" format:@"No handler for message from JS: %@", message];
+
             @try {
                 NSDictionary* data = message[@"data"];
                 if (!data || [data isKindOfClass:[NSNull class]]) { data = [NSDictionary dictionary]; }
