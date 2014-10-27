@@ -7,26 +7,44 @@
 //
 
 #import "ExampleAppViewController.h"
+
+#if defined(exampleSupportsWKWebKit)
+#import "WKWebViewJavascriptBridge.h"
+# else
 #import "WebViewJavascriptBridge.h"
+#endif
 
 @interface ExampleAppViewController ()
-@property WebViewJavascriptBridge* bridge;
+
+@property EXAMPLE_BRIDGE_TYPE* bridge;
+
 @end
 
 @implementation ExampleAppViewController
 
 - (void)viewWillAppear:(BOOL)animated {
     if (_bridge) { return; }
+    
+#if defined(exampleSupportsWKWebKit)
+        WKWebView* webView = [[NSClassFromString(@"WKWebView") alloc] initWithFrame:self.view.bounds];
+        webView.navigationDelegate = self;
+        [self.view addSubview:webView];
+        [WKWebViewJavascriptBridge enableLogging];
+        _bridge = [WKWebViewJavascriptBridge bridgeForWebView:webView webViewDelegate:self handler:^(id data, WVJBResponseCallback responseCallback) {
+            NSLog(@"ObjC received message from JS: %@", data);
+            responseCallback(@"Response for message from ObjC");
+        }];
+#else
+        UIWebView* webView = [[UIWebView alloc] initWithFrame:self.view.bounds];
+        [self.view addSubview:webView];
+        [WebViewJavascriptBridge enableLogging];
+        _bridge = [WebViewJavascriptBridge bridgeForWebView:webView webViewDelegate:self handler:^(id data, WVJBResponseCallback responseCallback) {
+            NSLog(@"ObjC received message from JS: %@", data);
+            responseCallback(@"Response for message from ObjC");
+        }];
+#endif
+    
 
-    UIWebView* webView = [[UIWebView alloc] initWithFrame:self.view.bounds];
-    [self.view addSubview:webView];
-    
-    [WebViewJavascriptBridge enableLogging];
-    
-    _bridge = [WebViewJavascriptBridge bridgeForWebView:webView webViewDelegate:self handler:^(id data, WVJBResponseCallback responseCallback) {
-        NSLog(@"ObjC received message from JS: %@", data);
-        responseCallback(@"Response for message from ObjC");
-    }];
     
     [_bridge registerHandler:@"testObjcCallback" handler:^(id data, WVJBResponseCallback responseCallback) {
         NSLog(@"testObjcCallback called: %@", data);
@@ -53,7 +71,7 @@
     NSLog(@"webViewDidFinishLoad");
 }
 
-- (void)renderButtons:(UIWebView*)webView {
+- (void)renderButtons:(EXAMPLE_WEBVIEW_TYPE*)webView {
     UIFont* font = [UIFont fontWithName:@"HelveticaNeue" size:12.0];
     
     UIButton *messageButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
@@ -92,7 +110,7 @@
     }];
 }
 
-- (void)loadExamplePage:(UIWebView*)webView {
+- (void)loadExamplePage:(EXAMPLE_WEBVIEW_TYPE*)webView {
     NSString* htmlPath = [[NSBundle mainBundle] pathForResource:@"ExampleApp" ofType:@"html"];
     NSString* appHtml = [NSString stringWithContentsOfFile:htmlPath encoding:NSUTF8StringEncoding error:nil];
     NSURL *baseURL = [NSURL fileURLWithPath:htmlPath];
