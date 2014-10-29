@@ -14,12 +14,12 @@
 #define kConsoleQueueHasMessage @"__WVJB_CONSOLE_QUEUE_MESSAGE__"
 #define kQueueHasMessage      @"__WVJB_QUEUE_MESSAGE__"
 
-#if defined __MAC_OS_X_VERSION_MAX_ALLOWED
+#if !TARGET_OS_IPHONE
     #import <WebKit/WebKit.h>
     #define WVJB_PLATFORM_OSX
     #define WVJB_WEBVIEW_TYPE WebView
     #define WVJB_WEBVIEW_DELEGATE_TYPE NSObject
-#elif defined __IPHONE_OS_VERSION_MAX_ALLOWED
+#else
     #import <UIKit/UIWebView.h>
     #define WVJB_PLATFORM_IOS
     #define WVJB_WEBVIEW_TYPE UIWebView

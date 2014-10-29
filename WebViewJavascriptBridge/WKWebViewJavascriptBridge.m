@@ -22,6 +22,8 @@ typedef NSDictionary WVJBMessage;
     WVJBHandler _messageHandler;
     NSBundle *_resourceBundle;
     NSUInteger _numRequestsLoading;
+    BOOL _shouldLogConsoleMessagesToNSLog;
+    WVJBJSConsoleMessageHandler _consoleLogHandler;
 }
 
 /* API
@@ -70,6 +72,14 @@ static bool logging = false;
     _messageHandlers[handlerName] = [handler copy];
 }
 
+- (void)setJSConsoleMessageHandler:(WVJBJSConsoleMessageHandler)handler {
+    _consoleLogHandler = handler;
+}
+
+- (void)setShouldLogJSConsoleMessagesToNSLog:(BOOL)shouldLog {
+    _shouldLogConsoleMessagesToNSLog = shouldLog;
+}
+
 - (void)reset {
     _startupMessageQueue = [NSMutableArray array];
     _responseCallbacks = [NSMutableDictionary dictionary];
@@ -88,6 +98,7 @@ static bool logging = false;
     _responseCallbacks = nil;
     _messageHandlers = nil;
     _messageHandler = nil;
+    _consoleLogHandler = nil;
 }
 
 - (void)_sendData:(id)data responseCallback:(WVJBResponseCallback)responseCallback handlerName:(NSString*)handlerName {
@@ -137,6 +148,25 @@ static bool logging = false;
             [_webView evaluateJavaScript:javascriptCommand completionHandler:nil];
         });
     }
+}
+
+- (void)_flushConsoleMessageQueue
+{
+    NANOWeakSelf_t weakSelf = self;
+    [_webView evaluateJavaScript:@"WebViewJavascriptBridge._fetchConsoleQueue();"
+               completionHandler:^(id messageQueueString, NSError * error) {
+                   WKWebViewJavascriptBridge* strongSelf = weakSelf;
+                   NSArray* messages = [messageQueueString respondsToSelector:@selector(componentsSeparatedByString:)] ? [messageQueueString componentsSeparatedByString:kMessageSeparator] : @[];
+                   for (NSString* messageJSON in messages) {
+                       NSDictionary* messageDict = [strongSelf _deserializeMessageJSON:messageJSON];
+                       if (_shouldLogConsoleMessagesToNSLog)
+                           NSLog(@"WVJB:JSConsoleLog: %@: %@",messageDict[@"type"],messageDict[@"message"]);
+                       if (strongSelf->_consoleLogHandler)
+                           strongSelf->_consoleLogHandler(messageDict[@"type"],messageDict[@"message"]);
+                   }
+                   
+                   strongSelf = nil;
+               }];
 }
 
 - (void)_flushMessageQueue:(NSString *)messageQueueString{
@@ -195,7 +225,7 @@ static bool logging = false;
     return [[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:message options:0 error:nil] encoding:NSUTF8StringEncoding];
 }
 
-- (NSArray*)_deserializeMessageJSON:(NSString *)messageJSON {
+- (NSDictionary*)_deserializeMessageJSON:(NSString *)messageJSON {
     return [NSJSONSerialization JSONObjectWithData:[messageJSON dataUsingEncoding:NSUTF8StringEncoding] options:NSJSONReadingAllowFragments error:nil];
 }
 
@@ -246,7 +276,7 @@ static bool logging = false;
     if (_numRequestsLoading == 0) {
         [webView evaluateJavaScript:@"typeof WebViewJavascriptBridge == \'object\';" completionHandler:^(NSString *result, NSError *error) {
             if(![result boolValue]){
-                NSBundle *bundle = _resourceBundle ? _resourceBundle : [NSBundle mainBundle];
+                NSBundle *bundle = _resourceBundle ? _resourceBundle : [NSBundle bundleForClass:[WKWebViewJavascriptBridge class]];
                 NSString *filePath = [bundle pathForResource:@"WebViewJavascriptBridge.js" ofType:@"txt"];
                 NSString *js = [NSString stringWithContentsOfFile:filePath encoding:NSUTF8StringEncoding error:nil];
                 [webView evaluateJavaScript:js completionHandler:nil];
@@ -278,6 +308,8 @@ decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
     if ([[url scheme] isEqualToString:kCustomProtocolScheme]) {
         if ([[url host] isEqualToString:kQueueHasMessage]) {
             [self WKFlushMessageQueue];
+        } else if ([[url host] isEqualToString:kConsoleQueueHasMessage]) {
+            [self _flushConsoleMessageQueue];
         } else {
             NSLog(@"WKWebViewJavascriptBridge: WARNING: Received unknown WKWebViewJavascriptBridge command %@://%@", kCustomProtocolScheme, [url path]);
         }
