@@ -224,7 +224,8 @@ static bool logging = false;
 
             if (!handler) {
                 [NSException raise:@"WVJBNoHandlerException" format:@"No handler for message from JS: %@", message];
-
+            }
+            
             @try {
                 NSDictionary* data = message[@"data"];
                 if (!data || [data isKindOfClass:[NSNull class]]) { data = [NSDictionary dictionary]; }
