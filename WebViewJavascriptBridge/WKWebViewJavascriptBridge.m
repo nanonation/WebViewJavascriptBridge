@@ -14,7 +14,7 @@ typedef NSDictionary WVJBMessage;
 
 @implementation WKWebViewJavascriptBridge {
     WKWebView* _webView;
-    id _webViewDelegate;
+    __weak NSObject<WKNavigationDelegate>* _webViewDelegate;
     NSMutableArray* _startupMessageQueue;
     NSMutableDictionary* _responseCallbacks;
     NSMutableDictionary* _messageHandlers;
@@ -292,7 +292,7 @@ static bool logging = false;
     }
     
     
-    __strong typeof(_webViewDelegate) strongDelegate = _webViewDelegate;
+    __strong NSObject<WKNavigationDelegate>* strongDelegate = _webViewDelegate;
     if (strongDelegate && [strongDelegate respondsToSelector:@selector(webView:didFinishNavigation:)]) {
         [strongDelegate webView:webView didFinishNavigation:navigation];
     }
@@ -304,7 +304,7 @@ decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction
 decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
     if (webView != _webView) { return; }
     NSURL *url = navigationAction.request.URL;
-    __strong typeof(_webViewDelegate) strongDelegate = _webViewDelegate;
+    __strong NSObject<WKNavigationDelegate>* strongDelegate = _webViewDelegate;
     if ([[url scheme] isEqualToString:kCustomProtocolScheme]) {
         if ([[url host] isEqualToString:kQueueHasMessage]) {
             [self WKFlushMessageQueue];
@@ -328,7 +328,7 @@ decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
     
     _numRequestsLoading++;
     
-    __strong typeof(_webViewDelegate) strongDelegate = _webViewDelegate;
+    __strong NSObject<WKNavigationDelegate>* strongDelegate = _webViewDelegate;
     if (strongDelegate && [strongDelegate respondsToSelector:@selector(webView:didStartProvisionalNavigation:)]) {
         [strongDelegate webView:webView didStartProvisionalNavigation:navigation];
     }
@@ -343,7 +343,7 @@ didFailNavigation:(WKNavigation *)navigation
     
     _numRequestsLoading--;
     
-    __strong typeof(_webViewDelegate) strongDelegate = _webViewDelegate;
+    __strong NSObject<WKNavigationDelegate>* strongDelegate = _webViewDelegate;
     if (strongDelegate && [strongDelegate respondsToSelector:@selector(webView:didFailNavigation:withError:)]) {
         [strongDelegate webView:webView didFailNavigation:navigation withError:error];
     }
