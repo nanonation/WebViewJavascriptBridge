@@ -16,10 +16,11 @@
 
 typedef NSDictionary WVJBMessage;
 
-@interface WebViewJavascriptBridge ()
 #if defined WVJB_PLATFORM_OSX
+@interface WebViewJavascriptBridge () <WebFrameLoadDelegate,WebResourceLoadDelegate,WebPolicyDelegate>
 - (void) _platformSpecificSetup:(WVJB_WEBVIEW_TYPE*)webView webViewDelegate:(WVJB_WEBVIEW_DELEGATE_TYPE*)webViewDelegate handler:(WVJBHandler)messageHandler resourceBundle:(NSBundle*)bundle;
 #elif defined WVJB_PLATFORM_IOS
+@interface WebViewJavascriptBridge () <UIWebViewDelegate>
 - (void) _platformSpecificSetup:(WVJB_WEBVIEW_TYPE*)webView webViewDelegate:(id<UIWebViewDelegate>)webViewDelegate handler:(WVJBHandler)messageHandler resourceBundle:(NSBundle*)bundle;
 #endif
 

@@ -38,6 +38,7 @@
 		2C1562C3176BA9FF00B4AE50 /* WebViewJavascriptBridge.js.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = WebViewJavascriptBridge.js.txt; sourceTree = "<group>"; };
 		2C1562C4176BA9FF00B4AE50 /* WebViewJavascriptBridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = WebViewJavascriptBridge.m; sourceTree = "<group>"; };
 		2CF17F5217D8AACF006E828B /* MainMenu.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MainMenu.xib; sourceTree = "<group>"; };
+		6371C21C1C3B01F600C4E8A6 /* WebViewJavascriptBridgeCommon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebViewJavascriptBridgeCommon.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,6 +119,7 @@
 		2C1562C1176BA9FF00B4AE50 /* WebViewJavascriptBridge */ = {
 			isa = PBXGroup;
 			children = (
+				6371C21C1C3B01F600C4E8A6 /* WebViewJavascriptBridgeCommon.h */,
 				2C1562C2176BA9FF00B4AE50 /* WebViewJavascriptBridge.h */,
 				2C1562C3176BA9FF00B4AE50 /* WebViewJavascriptBridge.js.txt */,
 				2C1562C4176BA9FF00B4AE50 /* WebViewJavascriptBridge.m */,

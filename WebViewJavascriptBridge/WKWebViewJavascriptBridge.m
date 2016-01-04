@@ -152,7 +152,7 @@ static bool logging = false;
 
 - (void)_flushConsoleMessageQueue
 {
-    NANOWeakSelf_t weakSelf = self;
+    __weak __typeof(self) weakSelf = self;
     [_webView evaluateJavaScript:@"WebViewJavascriptBridge._fetchConsoleQueue();"
                completionHandler:^(id messageQueueString, NSError * error) {
                    WKWebViewJavascriptBridge* strongSelf = weakSelf;

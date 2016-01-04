@@ -1,5 +1,13 @@
 #import "ExampleAppDelegate.h"
 #import "ExampleAppViewController.h"
+#import "WebViewJavascriptBridge.h"
+
+@interface ExampleAppDelegate ()
+{
+    WebViewJavascriptBridge* _bridge;
+}
+
+@end
 
 @implementation ExampleAppDelegate
 
@@ -32,8 +40,8 @@
     
     [_bridge callHandler:@"testJavascriptHandler" data:[NSDictionary dictionaryWithObject:@"before ready" forKey:@"foo"]];
     
-    [self renderButtons:webView];
-    [self loadExamplePage:webView];
+//    [self renderButtons:webView];
+//    [self loadExamplePage:webView];
     
     [_bridge send:@"A string sent from ObjC after Webview has loaded."];
     
