@@ -473,7 +473,10 @@ static bool logging = false;
         return;
     }
     
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
     [invocation invokeWithTarget:nil];
+#pragma clang diagnostic pop
 }
 
 @end
