@@ -140,12 +140,13 @@ static bool logging = false;
     messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\u2028" withString:@"\\u2028"];
     messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\u2029" withString:@"\\u2029"];
     
+    __weak WKWebView* weakWebView = _webView;
     NSString* javascriptCommand = [NSString stringWithFormat:@"WebViewJavascriptBridge._handleMessageFromObjC('%@');", messageJSON];
     if ([[NSThread currentThread] isMainThread]) {
-        [_webView evaluateJavaScript:javascriptCommand completionHandler:nil];
+        [weakWebView evaluateJavaScript:javascriptCommand completionHandler:nil];
     } else {
         dispatch_sync(dispatch_get_main_queue(), ^{
-            [_webView evaluateJavaScript:javascriptCommand completionHandler:nil];
+            [weakWebView evaluateJavaScript:javascriptCommand completionHandler:nil];
         });
     }
 }
@@ -159,7 +160,7 @@ static bool logging = false;
                    NSArray* messages = [messageQueueString respondsToSelector:@selector(componentsSeparatedByString:)] ? [messageQueueString componentsSeparatedByString:kMessageSeparator] : @[];
                    for (NSString* messageJSON in messages) {
                        NSDictionary* messageDict = [strongSelf _deserializeMessageJSON:messageJSON];
-                       if (_shouldLogConsoleMessagesToNSLog)
+                       if (strongSelf->_shouldLogConsoleMessagesToNSLog)
                            NSLog(@"WVJB:JSConsoleLog: %@: %@",messageDict[@"type"],messageDict[@"message"]);
                        if (strongSelf->_consoleLogHandler)
                            strongSelf->_consoleLogHandler(messageDict[@"type"],messageDict[@"message"]);
@@ -274,18 +275,22 @@ static bool logging = false;
     _numRequestsLoading--;
     
     if (_numRequestsLoading == 0) {
+        __weak __typeof(self) weakSelf = self;
         [webView evaluateJavaScript:@"typeof WebViewJavascriptBridge == \'object\';" completionHandler:^(NSString *result, NSError *error) {
+            WKWebViewJavascriptBridge* strongSelf = weakSelf;
+            if (strongSelf == NULL)
+                return;
             if(![result boolValue]){
-                NSBundle *bundle = _resourceBundle ? _resourceBundle : [NSBundle bundleForClass:[WKWebViewJavascriptBridge class]];
+                NSBundle *bundle = strongSelf->_resourceBundle ? strongSelf->_resourceBundle : [NSBundle bundleForClass:[WKWebViewJavascriptBridge class]];
                 NSString *filePath = [bundle pathForResource:@"WebViewJavascriptBridge.js" ofType:@"txt"];
                 NSString *js = [NSString stringWithContentsOfFile:filePath encoding:NSUTF8StringEncoding error:nil];
                 [webView evaluateJavaScript:js completionHandler:nil];
                 
-                if (_startupMessageQueue) {
-                    for (id queuedMessage in _startupMessageQueue) {
-                        [self _dispatchMessage:queuedMessage];
+                if (strongSelf->_startupMessageQueue) {
+                    for (id queuedMessage in strongSelf->_startupMessageQueue) {
+                        [strongSelf _dispatchMessage:queuedMessage];
                     }
-                    _startupMessageQueue = nil;
+                    strongSelf->_startupMessageQueue = nil;
                 }
             }
         }];
